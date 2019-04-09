@@ -103,6 +103,7 @@ int main(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_UP), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_DOWN), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_LEFT), SUNXI_GPIO_INPUT);
+	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_RIGHT), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', BUTTON_A), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', BUTTON_B), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', BUTTON_Y), SUNXI_GPIO_INPUT);
