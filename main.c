@@ -37,6 +37,8 @@ SOFTWARE.
 
 #include "gpio.h"
 
+static int32_t value[14];
+
 /* emit function is identical to of the first example */
 
 void emit(int fd, int type, int code, int val)
@@ -51,10 +53,7 @@ void emit(int fd, int type, int code, int val)
 	ie.time.tv_usec = 0;
 
 	write(fd, &ie, sizeof(ie));
-	//printf("emit write bytes=%d fd=%d code=%d val=%d\n",res, fd, code, val);
 }
-
-uint32_t value[14];
 
 enum
 {
@@ -80,7 +79,7 @@ enum
 int main(void)
 {
 	struct uinput_user_dev uud;
-	int version, rc, fd;
+	int fd;
 	   
 	/* Fork off the parent process */
 	pid_t pid, sid;
@@ -99,17 +98,7 @@ int main(void)
 	}
 
 	fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-	printf("fd=%d\n",fd);
 
-	rc = ioctl(fd, UI_GET_VERSION, &version);
-	printf("rd=%d\n",rc); 
-
-	if (rc == 0 && version >= 5) 
-	{
-		printf("Error! version=%d\n",version);
-		//return 0;
-	}
-    
 	sunxi_gpio_init();
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_UP), SUNXI_GPIO_INPUT);
 	sunxi_gpio_set_cfgpin(SUNXI_GPIO_PIN('D', DPAD_DOWN), SUNXI_GPIO_INPUT);

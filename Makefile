@@ -1,5 +1,5 @@
 CC	= /opt/retrostone-toolchain/bin/arm-buildroot-linux-musleabihf-gcc
-CFLAGS = -O2 -Wall -Werror
+CFLAGS = -Ofast -Wall -Werror
 LDFLAGS = -lc -lgcc -s
 OBJS = main.o gpio.o
 
