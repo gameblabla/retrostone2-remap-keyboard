@@ -1,0 +1,18 @@
+CC	= gcc
+CFLAGS = -O0 -g3 -Wall -Werror
+LDFLAGS = -lc -lgcc -pthread -levdev -s
+OBJS = main.o
+
+all: key_driver
+
+key_driver: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+$(OBJS): gpio.h
+
+clean:
+	rm -f pigc $(OBJS)
+
+install:
+	cp pigc /usr/local/bin
+	chmod 755 /usr/local/bin/pigc
