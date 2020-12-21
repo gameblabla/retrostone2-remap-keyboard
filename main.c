@@ -34,7 +34,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string.h>
 #include <linux/uinput.h>
-#include <pthread.h>
 
 #include <libevdev-1.0/libevdev/libevdev.h>
 #include <linux/limits.h>
@@ -42,19 +41,16 @@ SOFTWARE.
 #include <fcntl.h>
 #include <errno.h>
 
-#ifdef RG351P
-static const char* EVDEV_NAME = "/dev/input/by-path/platform-ff300000.usb-usb-0:1.2:1.0-event-joystick";
-#else
-static const char* EVDEV_NAME = "/dev/input/by-path/pci-0000:01:00.0-usb-0:5:1.0-event-joystick";
-#endif
+#include <fcntl.h>
+#include <errno.h>
+#include <gpiod.h>
 
-static int32_t value[16];
+#define NUMBER_OF_KEYS 14
+#define INTERVAL 10000
 
-const uint32_t ButtonState_Pressed = 1;
-const uint32_t ButtonState_Released = 0;
+static int32_t value[NUMBER_OF_KEYS];
+
 struct libevdev* dev;
-pthread_t thread_id;
-
 int quit = 0;
 int fd;
 
@@ -82,85 +78,46 @@ enum
 	DPAD_RIGHT = 3,
 	BUTTON_A = 4,
 	BUTTON_B = 5,
-	BUTTON_Y = 6,
-	BUTTON_X = 7,
+	BUTTON_X = 6,
+	BUTTON_Y = 7,
 	BUTTON_SELECT = 8,
 	BUTTON_START = 9,
 	BUTTON_L = 10,
 	BUTTON_R = 11,
 	BUTTON_L2 = 12,
 	BUTTON_R2 = 13,
-	BUTTON_L3 = 14,
-	BUTTON_R3 = 15,
-	BUTTON_POWER = 16
+	BUTTON_POWER = 14
 };
 
-pthread_t thread_id;
-
-		
-#define PRESS_KEY(a,b) if (value[a] == 1){ emit(fd, EV_KEY, b, 1); emit(fd, EV_SYN, SYN_REPORT, 1);} else{ emit(fd, EV_KEY, b, 0); emit(fd, EV_SYN, SYN_REPORT, 0); }
-		
-/*static void* input_task(void* arg)
+static int32_t line_num[NUMBER_OF_KEYS] =
 {
-	//struct input_event ev;
-    // Events
-	while (!quit)
-	{
-		//const int abs_x_max = libevdev_get_abs_maximum(dev, ABS_X);
-		//const int abs_y_max = libevdev_get_abs_maximum(dev, ABS_Y);
+	224 + 19,
+	224 + 7,
+	224 + 4,
+	224 + 16,
+	224,
+	224 + 11,
+	224 + 12,
+	224 + 20,
+	224 + 23,
+	224 + 22,
+	224 + 15,
+	224 + 14,
+	224 + 27,
+	224 + 26
+};
 
-		//printf("abs: x_max=%d, y_max=%d\n", abs_x_max, abs_y_max);
+#define PRESS_KEY(a,b) if (value[a] == 0){ emit(fd, EV_KEY, b, 1); emit(fd, EV_SYN, SYN_REPORT, 1);} else{ emit(fd, EV_KEY, b, 0); emit(fd, EV_SYN, SYN_REPORT, 0); }
 		
-		// Get current state
-		value[DPAD_UP] = libevdev_get_event_value(dev, EV_KEY, BTN_DPAD_UP) ? ButtonState_Pressed : ButtonState_Released;
-		value[DPAD_DOWN] = libevdev_get_event_value(dev, EV_KEY, BTN_DPAD_DOWN) ? ButtonState_Pressed : ButtonState_Released;
-		value[DPAD_LEFT] = libevdev_get_event_value(dev, EV_KEY, BTN_DPAD_LEFT) ? ButtonState_Pressed : ButtonState_Released;
-		value[DPAD_RIGHT] = libevdev_get_event_value(dev, EV_KEY, BTN_DPAD_RIGHT) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_A] = libevdev_get_event_value(dev, EV_KEY, BTN_EAST) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_B] = libevdev_get_event_value(dev, EV_KEY, BTN_SOUTH) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_X] = libevdev_get_event_value(dev, EV_KEY, BTN_NORTH) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_Y] = libevdev_get_event_value(dev, EV_KEY, BTN_WEST) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_SELECT] = libevdev_get_event_value(dev, EV_KEY, BTN_TL) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_START] = libevdev_get_event_value(dev, EV_KEY, BTN_TR) ? ButtonState_Pressed : ButtonState_Released;
-
-		//input->current_state.buttons[Go2InputButton_F1] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY1) ? ButtonState_Pressed : ButtonState_Released;
-		//input->current_state.buttons[Go2InputButton_F2] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY2) ? ButtonState_Pressed : ButtonState_Released;
-		//input->current_state.buttons[Go2InputButton_F3] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY3) ? ButtonState_Pressed : ButtonState_Released;
-		//input->current_state.buttons[Go2InputButton_F4] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY4) ? ButtonState_Pressed : ButtonState_Released;
-		//input->current_state.buttons[Go2InputButton_F5] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY5) ? ButtonState_Pressed : ButtonState_Released;
-		//input->current_state.buttons[Go2InputButton_F6] = libevdev_get_event_value(dev, EV_KEY, BTN_TRIGGER_HAPPY6) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_L] = libevdev_get_event_value(dev, EV_KEY, BTN_TL2) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_R] = libevdev_get_event_value(dev, EV_KEY, BTN_TR2) ? ButtonState_Pressed : ButtonState_Released;
-
-		PRESS_KEY(0,KEY_UP)
-		PRESS_KEY(1,KEY_DOWN)
-		PRESS_KEY(2,KEY_LEFT)
-		PRESS_KEY(3,KEY_RIGHT)
-		PRESS_KEY(4,KEY_LEFTCTRL)
-		PRESS_KEY(5,KEY_LEFTALT)
-		PRESS_KEY(6,KEY_LEFTSHIFT)
-		PRESS_KEY(7,KEY_SPACE)
-		PRESS_KEY(8,KEY_TAB)
-		PRESS_KEY(9,KEY_BACKSPACE)
-		PRESS_KEY(10,KEY_END)
-		PRESS_KEY(11,KEY_3)
-		PRESS_KEY(12,KEY_ENTER)
-		PRESS_KEY(13,KEY_ESC)
-    }
-
-    return NULL;
-}*/
 		
 int main(void)
 {
 	struct uinput_user_dev uud;
-	int fd_ev;
-	//int result = 0;
-	int rc = 1;
-	//int i;
+	char *chipname = "gpiochip0";
+	struct gpiod_chip *chip;
+	struct gpiod_line *line[14];
+	int i, ret;
+	
 	   
 	/* Fork off the parent process */
 	pid_t pid, sid;
@@ -179,7 +136,12 @@ int main(void)
 	}
 	
 	fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-	
+	if(fd < 0)
+	{
+		printf("Can't open /dev/uinput\n");
+		return 1;
+	}
+		
 	/* The ioctls below will enable the device that is about to be created. */
 	ioctl(fd, UI_SET_EVBIT, EV_KEY);
 	ioctl(fd, UI_SET_EVBIT, EV_SYN);
@@ -199,8 +161,6 @@ int main(void)
 	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
 	ioctl(fd, UI_SET_KEYBIT, KEY_ESC);
 	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
-	ioctl(fd, UI_SET_KEYBIT, KEY_KPSLASH);
-	ioctl(fd, UI_SET_KEYBIT, KEY_KPDOT);
 	//ioctl(fd, UI_SET_KEYBIT, KEY_POWER);
 
 	//  printf("ioctl = %d, %d, %d ,%d , %d, %d\n", i1,i2,i3,i4,i5,i6);
@@ -209,115 +169,42 @@ int main(void)
 	snprintf(uud.name, UINPUT_MAX_NAME_SIZE, "uinput-keyboard");
 	uud.id.bustype = BUS_HOST;
 	uud.id.vendor  = 0x1;
-	uud.id.product = 0x2;
+	uud.id.product = 0x1;
 	uud.id.version = 1;
 
 	write(fd, &uud, sizeof(uud));
 	ioctl(fd, UI_DEV_CREATE);
 
-	fd_ev = open(EVDEV_NAME, O_RDONLY);
-    if (fd_ev < 0)
-    {
-        printf("Joystick: No gamepad found.\n");
-        return 1;
-    }
-    else
-    {    
-        rc = libevdev_new_from_fd(fd_ev, &dev);
-        if (rc < 0) {
-            printf("Joystick: Failed to init libevdev (%s)\n", strerror(-rc));
-            return 1;
-        }
-    
-        // printf("Input device name: \"%s\"\n", libevdev_get_name(result->dev));
-        // printf("Input device ID: bus %#x vendor %#x product %#x\n",
-        //     libevdev_get_id_bustype(result->dev),
-        //     libevdev_get_id_vendor(result->dev),
-        //     libevdev_get_id_product(result->dev));
+	chip = gpiod_chip_open_by_name(chipname);
+	if (!chip) {
+		printf("Open chip failed\n");
+		return 1;
+	}
 
-        /*if(pthread_create(&thread_id, NULL, input_task, NULL) < 0)
-        {
-            printf("could not create input_task thread\n");
-            return 1;
-        }*/
-    }
+	for(i=0;i<NUMBER_OF_KEYS;i++)
+	{
+		line[i] = gpiod_chip_get_line(chip, line_num[i]);
+		if (!line[i]) {
+			printf("Get line failed\n");
+			gpiod_chip_close(chip);
+			return 1;
+		}
+
+		ret = gpiod_line_request_input(line[i], "Consumer");
+		if (ret < 0) {
+			printf("Request line as input failed, I %d\n", i);
+			//gpiod_chip_close(chip);
+			//return 1;
+		}
+	}
 
 	/* Key press, report the event, send key release, and report again */
 	do
 	{
-        struct input_event ev;
-        rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
-        
-        switch(ev.type)
-        {
-			/*case EV_KEY:
-				switch(ev.code)
-				{
-					case 305:
-					break;
-				}
-			break;*/
-			case EV_ABS:
-				switch(ev.code)
-				{
-					case 17:
-						if (ev.value < -1)
-						{
-							value[DPAD_UP] = 1;
-							value[DPAD_DOWN] = 0;
-						}
-						else
-						{
-							value[DPAD_UP] = 0;
-							value[DPAD_DOWN] = 1;
-						}
-					break;
-					case 16:
-						if (ev.value < -1)
-						{
-							value[DPAD_LEFT] = 1;
-							value[DPAD_RIGHT] = 0;
-						}
-						else
-						{
-							value[DPAD_LEFT] = 0;
-							value[DPAD_RIGHT] = 1;
-						}
-					break;
-					
-					// Those are for the analog sticks but they should be mapped already thanks to kernel
-					/*
-					case 2:
-					break;
-					case 3:
-					break;
-					case 4:
-					break;
-					case 5:
-					break;
-					*/
-				}
-			break;
-			
+		for(i=0;i<NUMBER_OF_KEYS;i++)
+		{
+			value[i] = gpiod_line_get_value(line[i]);
 		}
-		
-		value[BUTTON_A] = libevdev_get_event_value(dev, EV_KEY, 304) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_B] = libevdev_get_event_value(dev, EV_KEY, 305) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_X] = libevdev_get_event_value(dev, EV_KEY, 307) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_Y] = libevdev_get_event_value(dev, EV_KEY, 308) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_SELECT] = libevdev_get_event_value(dev, EV_KEY, 311) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_START] = libevdev_get_event_value(dev, EV_KEY, 310) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_L] = libevdev_get_event_value(dev, EV_KEY, 308) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_R] = libevdev_get_event_value(dev, EV_KEY, 314) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_L2] = libevdev_get_event_value(dev, EV_KEY, 315) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_R2] = libevdev_get_event_value(dev, EV_KEY, 309) ? ButtonState_Pressed : ButtonState_Released;
-
-		value[BUTTON_L3] = libevdev_get_event_value(dev, EV_KEY, 2) ? ButtonState_Pressed : ButtonState_Released;
-		value[BUTTON_R3] = libevdev_get_event_value(dev, EV_KEY, 4) ? ButtonState_Pressed : ButtonState_Released;
-
 		PRESS_KEY(0,KEY_UP)
 		PRESS_KEY(1,KEY_DOWN)
 		PRESS_KEY(2,KEY_LEFT)
@@ -328,16 +215,12 @@ int main(void)
 		PRESS_KEY(7,KEY_SPACE)
 		PRESS_KEY(8,KEY_TAB)
 		PRESS_KEY(9,KEY_BACKSPACE)
-		PRESS_KEY(10,KEY_PAGEUP)
-		PRESS_KEY(11,KEY_PAGEDOWN)
-		PRESS_KEY(12,KEY_ENTER)
-		PRESS_KEY(13,KEY_ESC)
-		
-		PRESS_KEY(14,KEY_KPSLASH)
-		PRESS_KEY(15,KEY_KPDOT)
-		//PRESS_KEY(16,KEY_ESC)
-		
-	} while (rc == 1 || rc == 0 || rc == -EAGAIN || !quit);
+		PRESS_KEY(10,KEY_ESC)
+		PRESS_KEY(11,KEY_ENTER)
+		PRESS_KEY(12,KEY_PAGEUP)
+		PRESS_KEY(13,KEY_PAGEDOWN)
+		usleep(INTERVAL);
+	} while (!quit);
 	
 	ioctl(fd, UI_DEV_DESTROY);
 	close(fd);
@@ -347,7 +230,10 @@ int main(void)
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO);
 	
-	libevdev_free(dev);
+	gpiod_chip_close(chip);
+	for(i=0;i<14;i++)
+	gpiod_line_release(line[i]);
+	
 
 	return 0;
 }

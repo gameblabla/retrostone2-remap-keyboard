@@ -1,6 +1,6 @@
-CC	= /opt/rg351p-toolchain/bin/aarch64-buildroot-linux-gnu-gcc
-CFLAGS = -O0 -g3 -Wall -Werror -DRG351P
-LDFLAGS = -lc -lgcc -pthread -levdev -s
+CC	= /opt/retrostone2-toolchain/bin/arm-linux-gcc
+CFLAGS = -O0 -g3 -Wall
+LDFLAGS = -lc -lgcc -pthread -lgpiod -s
 OBJS = main.o
 
 all: key_driver
