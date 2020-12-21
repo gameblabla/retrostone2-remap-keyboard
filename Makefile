@@ -1,6 +1,6 @@
-CC	= /opt/retrostone2-toolchain/bin/arm-linux-gcc
-CFLAGS = -O0 -g3 -Wall
-LDFLAGS = -lc -lgcc -pthread -lgpiod -s
+CC	= $(CROSS_COMPILE)gcc
+CFLAGS := -Ofast -fdata-sections -ffunction-sections -flto -Wall
+LDFLAGS := -lc -lgcc -pthread -lgpiod -Wl,--as-needed -Wl,--gc-sections -s -flto
 OBJS = main.o
 
 all: key_driver

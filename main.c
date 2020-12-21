@@ -45,7 +45,7 @@ SOFTWARE.
 #include <errno.h>
 #include <gpiod.h>
 
-#define NUMBER_OF_KEYS 14
+#define NUMBER_OF_KEYS 16
 #define INTERVAL 10000
 
 static int32_t value[NUMBER_OF_KEYS];
@@ -86,7 +86,8 @@ enum
 	BUTTON_R = 11,
 	BUTTON_L2 = 12,
 	BUTTON_R2 = 13,
-	BUTTON_POWER = 14
+	BUTTON_L3 = 14,
+	BUTTON_R3 = 15,
 };
 
 static int32_t line_num[NUMBER_OF_KEYS] =
@@ -104,7 +105,9 @@ static int32_t line_num[NUMBER_OF_KEYS] =
 	224 + 15,
 	224 + 14,
 	224 + 27,
-	224 + 26
+	224 + 26,
+	64 + 18,
+	64 + 22,
 };
 
 #define PRESS_KEY(a,b) if (value[a] == 0){ emit(fd, EV_KEY, b, 1); emit(fd, EV_SYN, SYN_REPORT, 1);} else{ emit(fd, EV_KEY, b, 0); emit(fd, EV_SYN, SYN_REPORT, 0); }
@@ -115,7 +118,7 @@ int main(void)
 	struct uinput_user_dev uud;
 	char *chipname = "gpiochip0";
 	struct gpiod_chip *chip;
-	struct gpiod_line *line[14];
+	struct gpiod_line *line[NUMBER_OF_KEYS];
 	int i, ret;
 	
 	   
@@ -161,6 +164,8 @@ int main(void)
 	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
 	ioctl(fd, UI_SET_KEYBIT, KEY_ESC);
 	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
+	ioctl(fd, UI_SET_KEYBIT, KEY_KPSLASH);
+	ioctl(fd, UI_SET_KEYBIT, KEY_KPDOT);
 	//ioctl(fd, UI_SET_KEYBIT, KEY_POWER);
 
 	//  printf("ioctl = %d, %d, %d ,%d , %d, %d\n", i1,i2,i3,i4,i5,i6);
@@ -219,6 +224,8 @@ int main(void)
 		PRESS_KEY(11,KEY_ENTER)
 		PRESS_KEY(12,KEY_PAGEUP)
 		PRESS_KEY(13,KEY_PAGEDOWN)
+		PRESS_KEY(14,KEY_KPSLASH)
+		PRESS_KEY(15,KEY_KPDOT)
 		usleep(INTERVAL);
 	} while (!quit);
 	
@@ -231,7 +238,7 @@ int main(void)
 	close(STDERR_FILENO);
 	
 	gpiod_chip_close(chip);
-	for(i=0;i<14;i++)
+	for(i=0;i<NUMBER_OF_KEYS;i++)
 	gpiod_line_release(line[i]);
 	
 
