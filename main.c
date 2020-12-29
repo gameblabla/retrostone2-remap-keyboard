@@ -33,10 +33,6 @@ SOFTWARE.
 #include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
-#include <linux/uinput.h>
-
-#include <libevdev-1.0/libevdev/libevdev.h>
-#include <linux/limits.h>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -45,83 +41,47 @@ SOFTWARE.
 #include <errno.h>
 #include <gpiod.h>
 
-#define NUMBER_OF_KEYS 16
-#define INTERVAL 10000
+#define NUMBER_OF_KEYS 2
+#define INTERVAL 100000
+#define READ_BRIGHTNESS_PATH "/sys/class/backlight/backlight/actual_brightness"
+#define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
 
 static int32_t value[NUMBER_OF_KEYS];
 
-struct libevdev* dev;
 int quit = 0;
 int fd;
 
-/* emit function is identical to of the first example */
-
-void emit(int fd, int type, int code, int val)
-{
-	struct input_event ie;
-
-	ie.type = type;
-	ie.code = code;
-	ie.value = val;
-	/* timestamp values below are ignored */
-	ie.time.tv_sec = 0;
-	ie.time.tv_usec = 0;
-
-	write(fd, &ie, sizeof(ie));
-}
-
-enum
-{
-	DPAD_UP = 0,
-	DPAD_DOWN = 1,
-	DPAD_LEFT = 2,
-	DPAD_RIGHT = 3,
-	BUTTON_A = 4,
-	BUTTON_B = 5,
-	BUTTON_X = 6,
-	BUTTON_Y = 7,
-	BUTTON_SELECT = 8,
-	BUTTON_START = 9,
-	BUTTON_L = 10,
-	BUTTON_R = 11,
-	BUTTON_L2 = 12,
-	BUTTON_R2 = 13,
-	BUTTON_L3 = 14,
-	BUTTON_R3 = 15,
-};
-
 static int32_t line_num[NUMBER_OF_KEYS] =
 {
-	224 + 19,
-	224 + 7,
-	224 + 4,
-	224 + 16,
-	224,
-	224 + 11,
-	224 + 12,
-	224 + 20,
-	224 + 23,
-	224 + 22,
-	224 + 15,
-	224 + 14,
-	224 + 27,
-	224 + 26,
 	64 + 18,
 	64 + 22,
 };
 
-#define PRESS_KEY(a,b) if (value[a] == 0){ emit(fd, EV_KEY, b, 1); emit(fd, EV_SYN, SYN_REPORT, 1);} else{ emit(fd, EV_KEY, b, 0); emit(fd, EV_SYN, SYN_REPORT, 0); }
-		
+int getBacklight()
+{
+	char buf[32] = "-1";
+	FILE *f = fopen(READ_BRIGHTNESS_PATH, "r");
+	if (f) {
+		fgets(buf, sizeof(buf), f);
+	}
+	fclose(f);
+	return atoi(buf);
+}
+
+void setBacklight(int level) {
+	char buf[200] = {0};
+	sprintf(buf, "echo %d > %s", level, BRIGHTNESS_PATH);
+	system(buf);
+}
 		
 int main(void)
 {
-	struct uinput_user_dev uud;
 	char *chipname = "gpiochip0";
 	struct gpiod_chip *chip;
 	struct gpiod_line *line[NUMBER_OF_KEYS];
 	int i, ret;
+	int bright = 50;
 	
-	   
 	/* Fork off the parent process */
 	pid_t pid, sid;
 	pid = fork();
@@ -137,48 +97,6 @@ int main(void)
 	if (sid < 0) {
 		exit(EXIT_FAILURE);
 	}
-	
-	fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
-	if(fd < 0)
-	{
-		printf("Can't open /dev/uinput\n");
-		return 1;
-	}
-		
-	/* The ioctls below will enable the device that is about to be created. */
-	ioctl(fd, UI_SET_EVBIT, EV_KEY);
-	ioctl(fd, UI_SET_EVBIT, EV_SYN);
-	
-	ioctl(fd, UI_SET_KEYBIT, KEY_UP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_DOWN);
-	ioctl(fd, UI_SET_KEYBIT, KEY_LEFT);
-	ioctl(fd, UI_SET_KEYBIT, KEY_RIGHT);
-	ioctl(fd, UI_SET_KEYBIT, KEY_LEFTCTRL);
-	ioctl(fd, UI_SET_KEYBIT, KEY_LEFTALT);
-	ioctl(fd, UI_SET_KEYBIT, KEY_LEFTSHIFT);
-	ioctl(fd, UI_SET_KEYBIT, KEY_SPACE);
-	ioctl(fd, UI_SET_KEYBIT, KEY_TAB);
-	ioctl(fd, UI_SET_KEYBIT, KEY_BACKSPACE);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEUP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEDOWN);
-	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
-	ioctl(fd, UI_SET_KEYBIT, KEY_ESC);
-	ioctl(fd, UI_SET_KEYBIT, KEY_ENTER);
-	ioctl(fd, UI_SET_KEYBIT, KEY_KPSLASH);
-	ioctl(fd, UI_SET_KEYBIT, KEY_KPDOT);
-	//ioctl(fd, UI_SET_KEYBIT, KEY_POWER);
-
-	//  printf("ioctl = %d, %d, %d ,%d , %d, %d\n", i1,i2,i3,i4,i5,i6);
-
-	memset(&uud, 0, sizeof(uud));
-	snprintf(uud.name, UINPUT_MAX_NAME_SIZE, "uinput-keyboard");
-	uud.id.bustype = BUS_HOST;
-	uud.id.vendor  = 0x1;
-	uud.id.product = 0x1;
-	uud.id.version = 1;
-
-	write(fd, &uud, sizeof(uud));
-	ioctl(fd, UI_DEV_CREATE);
 
 	chip = gpiod_chip_open_by_name(chipname);
 	if (!chip) {
@@ -202,6 +120,8 @@ int main(void)
 			//return 1;
 		}
 	}
+	
+	bright = getBacklight();
 
 	/* Key press, report the event, send key release, and report again */
 	do
@@ -210,32 +130,22 @@ int main(void)
 		{
 			value[i] = gpiod_line_get_value(line[i]);
 		}
-		PRESS_KEY(0,KEY_UP)
-		PRESS_KEY(1,KEY_DOWN)
-		PRESS_KEY(2,KEY_LEFT)
-		PRESS_KEY(3,KEY_RIGHT)
-		PRESS_KEY(4,KEY_LEFTCTRL)
-		PRESS_KEY(5,KEY_LEFTALT)
-		PRESS_KEY(6,KEY_LEFTSHIFT)
-		PRESS_KEY(7,KEY_SPACE)
-		PRESS_KEY(8,KEY_TAB)
-		PRESS_KEY(9,KEY_BACKSPACE)
-		PRESS_KEY(10,KEY_ESC)
-		PRESS_KEY(11,KEY_ENTER)
-		PRESS_KEY(12,KEY_PAGEUP)
-		PRESS_KEY(13,KEY_PAGEDOWN)
-		PRESS_KEY(14,KEY_KPSLASH)
-		PRESS_KEY(15,KEY_KPDOT)
+		
+		if (value[1] == 0)
+		{
+			bright-= 5;
+			if (bright < 1) bright = 1;
+			setBacklight(bright);
+		}
+		else if (value[0] == 0)
+		{
+			bright+= 5;
+			if (bright > 99) bright = 100;
+			setBacklight(bright);
+		}
+
 		usleep(INTERVAL);
 	} while (!quit);
-	
-	ioctl(fd, UI_DEV_DESTROY);
-	close(fd);
-	
-	/* Close out the standard file descriptors */
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
 	
 	gpiod_chip_close(chip);
 	for(i=0;i<NUMBER_OF_KEYS;i++)

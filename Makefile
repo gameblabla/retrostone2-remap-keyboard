@@ -1,18 +1,18 @@
-CC	= $(CROSS_COMPILE)gcc
-CFLAGS := -Ofast -fdata-sections -ffunction-sections -flto -Wall
-LDFLAGS := -lc -lgcc -pthread -lgpiod -Wl,--as-needed -Wl,--gc-sections -s -flto
+CC	= /opt/retrostone2-toolchain/bin/arm-linux-gcc
+CFLAGS = -Ofast -flto -Wall
+LDFLAGS = -lc -lgcc -pthread -lgpiod -flto -s
 OBJS = main.o
 
-all: key_driver
+all: brightness_daemon
 
-key_driver: $(OBJS)
+brightness_daemon: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): main.o
 
 clean:
-	rm -f key_driver $(OBJS)
+	rm -f brightness_daemon $(OBJS)
 
 install:
-	cp key_driver /usr/bin
-	chmod 755 /usr/bin/key_driver
+	cp brightness_daemon /usr/bin
+	chmod 755 /usr/bin/brightness_daemon
