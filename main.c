@@ -41,7 +41,7 @@ SOFTWARE.
 #include <errno.h>
 #include <gpiod.h>
 
-#define NUMBER_OF_KEYS 2
+#define NUMBER_OF_KEYS 1
 #define INTERVAL 100000
 #define READ_BRIGHTNESS_PATH "/sys/class/backlight/backlight/actual_brightness"
 #define BRIGHTNESS_PATH "/sys/class/backlight/backlight/brightness"
@@ -53,8 +53,7 @@ int fd;
 
 static int32_t line_num[NUMBER_OF_KEYS] =
 {
-	64 + 18,
-	64 + 22,
+	64 + 22
 };
 
 int getBacklight()
@@ -131,16 +130,10 @@ int main(void)
 			value[i] = gpiod_line_get_value(line[i]);
 		}
 		
-		if (value[1] == 0)
-		{
-			bright-= 5;
-			if (bright < 1) bright = 1;
-			setBacklight(bright);
-		}
-		else if (value[0] == 0)
+		if (value[0] == 0)
 		{
 			bright+= 5;
-			if (bright > 99) bright = 100;
+			if (bright > 99) bright = 1;
 			setBacklight(bright);
 		}
 
